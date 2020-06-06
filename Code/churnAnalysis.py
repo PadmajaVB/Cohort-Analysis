@@ -226,7 +226,7 @@ def calibration_plot(test_data, model):
 
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
-    ax1.set_xlabel("Fraction of positives")
+    ax1.set_xlabel("mean_predicted_value")
     ax1.legend(loc="lower right")
     ax1.set_title('Calibration plots (reliability curve)')
 

@@ -224,7 +224,7 @@ def financial_impact(actions):
     source['baseline'] = actions.loc[customer]['RemainingValue']
 
     bar = alt.Chart(source).mark_bar(size=50).encode(
-        x='upgrades:O',
+        x=alt.X('upgrades:O', sort=upgrades),
         y='Monetary value:Q'
     )
 
