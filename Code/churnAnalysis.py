@@ -20,6 +20,7 @@ Analysing at-risk customers, factors that influence the churn, and ways to preve
 
 # TODO: Handle error scenario
 def read_data(path, file_type):
+    global raw_data
     if file_type.lower() == 'csv':
         raw_data = pd.read_csv(path)
     elif file_type.lower() == 'excel':
@@ -41,7 +42,7 @@ def data_processing(raw_data):
                        'Contract_One year', 'Contract_Two year', 'PaperlessBilling_Yes',
                        'PaymentMethod_Bank transfer (automatic)', 'PaymentMethod_Credit card (automatic)',
                        'PaymentMethod_Electronic check', 'Churn_Yes']]
-    data = dummies.join(raw_data[['MonthlyCharges', 'TotalCharges', 'tenure']])
+    data = dummies.join(raw_data[['customerID', 'MonthlyCharges', 'TotalCharges', 'tenure']])
     data.set_index('customerID', inplace=True)
     data['TotalCharges'] = data[['TotalCharges']].replace([' '], '0')
     data['TotalCharges'] = pd.to_numeric(data['TotalCharges'])
@@ -102,10 +103,11 @@ def predict(data, model):
 
     plt.clf()
     # investigate individual customers and see how the conditioning has affected their survival over the base line
-    subject = 12
+    subject = '5575-GNVDE'
     unconditioned_sf[subject].plot(ls="--", color="#A60628", label="unconditioned")
     conditioned_sf[subject].plot(color="#A60628",
-                                 label="conditioned on $T>58$")  # T>58 indicate that the customer is active even after 58 months
+                                 label="conditioned on $T>34$")  # T>34 indicate that the customer is active even after 58 months
+
     plt.legend()
     # plot_data = pd.DataFrame()
     # plot_data['unconditioned_sf'] = unconditioned_sf[subject]
@@ -150,14 +152,15 @@ def churn_prevention(values, model):
                 'Contract_Two year']
     results_dict = {}
 
-    for customer in values.index:
-        actual = data.loc[[customer]]
-        change = data.loc[[customer]]
-        results_dict[customer] = [model.predict_median(actual)]
-        for upgrade in upgrades:
-            change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
-            results_dict[customer].append(model.predict_median(change))
-            change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
+    # TODO: run this for all the customers
+    actual = data.loc[['5575-GNVDE']]
+    change = data.loc[['5575-GNVDE']]
+    results_dict['5575-GNVDE'] = [model.predict_median(actual)]
+    for upgrade in upgrades:
+        change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
+        results_dict['5575-GNVDE'].append(model.predict_median(change))
+        change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
+
     result_df = pd.DataFrame(results_dict).T
     result_df.columns = ['baseline'] + upgrades
     actions = values.join(result_df).drop([0.5], axis=1)
@@ -166,6 +169,11 @@ def churn_prevention(values, model):
     print("Change in survival period\n", actions.head())
     '''
     ## Churn Prevention
+    Reference data to see what features the customer had already subscribed/unsubscribed to.
+    '''
+    st.write(data.loc[['5575-GNVDE'], upgrades])
+    '''
+    \n
     Through coefficient chart we concluded that these 4 features i.e. *Contract_Two year, Contract_One year, 
     PaymentMethod_Credit card (automatic), PaymentMethod_Bank transfer (automatic)* promotes the survival chances positively, 
     so let's focus on those and see how subscribing/ unsubscribing to these services changes the survival chances
@@ -173,10 +181,14 @@ def churn_prevention(values, model):
     st.write(actions[['baseline', 'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Bank transfer (automatic)',
                      'Contract_One year', 'Contract_Two year']].head(n=5))
     '''
-    Notice that if we get the 1st customer to use CC we increase the survival period of customer 0 by 4 months 
-    i.e. 22(baseline) -> 26(PaymentMethod_Credit card (automatic)) and so on..
-    Whereas Customer 6 was already using the CC, after reverting it we can see that the survival chances goes down from 26 to 21
+    \n
+    Notice that if we get the 1st customer to use CC we increase the survival period of cust '5575-GNVDE' by 5 months 
+    i.e. 46(baseline) -> 51(PaymentMethod_Credit card (automatic)) and so on..
+    Note: Cust 5575-GNVDE was already having Contract_One year, after reverting it we can see that the survival chances 
+    goes down from 46 to 37
     '''
+    st.write(actions.loc[['5575-GNVDE']].head(n=5))
+
     return actions
 
 
@@ -188,10 +200,17 @@ def financial_impact(actions):
     actions['1yrContract Diff'] = (actions['Contract_One year'] - actions['baseline']) * actions['MonthlyCharges']
     actions['2yrContract Diff'] = (actions['Contract_Two year'] - actions['baseline']) * actions['MonthlyCharges']
     print("Financial impact that the change in survival period has:\n", actions.head())
+    '''
+    \n
+    **Financial Impact:** This tells us the additional financial value that the customer can add by subscribing 
+    to each on of the given four features
+    '''
+    st.write(actions.loc[['5575-GNVDE']])
     return actions
 
 
 def calibration_plot(test_data, model):
+    plt.clf()
     plt.figure(figsize=(10, 10))
 
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
@@ -207,8 +226,17 @@ def calibration_plot(test_data, model):
 
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
+    ax1.set_xlabel("Fraction of positives")
     ax1.legend(loc="lower right")
     ax1.set_title('Calibration plots (reliability curve)')
+
+    '''
+    ## Accuracy and Calibration
+    Calibration is the propensity of the model to get probabilities right over time (i.e. having high recall value)
+    
+    **Calibration plot** for tenure = 13 months 
+    '''
+    st.pyplot(plt)
 
     # To understand how far away the line is from the perfect calibration we use brier_score_loss
     brier_score_loss(test_data['Churn_Yes'], 1 - np.array(model.predict_survival_function(test_data).loc[13]), pos_label=1)
@@ -224,11 +252,16 @@ def calibration_plot(test_data, model):
 
     fig, ax = plt.subplots()
     ax.plot(loss_df.index, loss_df)
-    ax.set(xlabel='Pediction Time', ylabel='Calibration Loss', title='Cox PH Model Calibration Loss / Time')
+    ax.set(xlabel='Prediction Time', ylabel='Calibration Loss', title='Cox PH Model Calibration Loss / Time')
     ax.grid()
 
     # Here we can see that the model is well caliberated b/w 5 and 25 months
     plt.show()
+
+    '''
+    **Brier score loss plot** after inspecting the calibration of model for all the tenures/time period
+    '''
+    st.pyplot(plt)
 
     return loss_df
 
