@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+import altair as alt
 
 from sklearn.cross_validation import train_test_split
 from lifelines import CoxPHFitter
@@ -13,9 +14,14 @@ from sklearn.metrics import brier_score_loss
 pd.set_option('display.max_columns', 50)
 
 """
-# Churn Analysis 
+# Churn Analysis - Prediction and Prevention 
 Analysing at-risk customers, factors that influence the churn, and ways to prevent it.
 """
+
+customer = st.sidebar.selectbox(
+        "Select a customer",
+        ("5575-GNVDE", "1452-KIOVK", "9763-GRSKD")
+    )
 
 
 # TODO: Handle error scenario
@@ -26,15 +32,15 @@ def read_data(path, file_type):
     elif file_type.lower() == 'excel':
         raw_data = pd.read_excel(path)
     if st.checkbox('Show raw data'):
-        st.write(raw_data.head(n=5))
+        st.write(raw_data[raw_data['customerID'] == customer])
     return raw_data
 
 
 def data_processing(raw_data):
     dummies = pd.get_dummies(
         raw_data[['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 'PhoneService', 'MultipleLines',
-            'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
-            'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod', 'Churn']]
+                  'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
+                  'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod', 'Churn']]
     )
     dummies = dummies[['gender_Female', 'Partner_Yes', 'Dependents_Yes', 'PhoneService_Yes', 'MultipleLines_Yes',
                        'InternetService_DSL', 'InternetService_Fiber optic', 'OnlineSecurity_Yes',
@@ -46,19 +52,20 @@ def data_processing(raw_data):
     data.set_index('customerID', inplace=True)
     data['TotalCharges'] = data[['TotalCharges']].replace([' '], '0')
     data['TotalCharges'] = pd.to_numeric(data['TotalCharges'])
-    if st.checkbox('Show processed data'):
-        st.write(data.head(n=5))
     return data
 
 
-def modeling(data):
+def modeling(dataset):
     train_features = ['gender_Female', 'Partner_Yes', 'Dependents_Yes', 'PhoneService_Yes', 'MultipleLines_Yes',
-                      'InternetService_DSL', 'InternetService_Fiber optic', 'OnlineSecurity_Yes', 'DeviceProtection_Yes',
-                      'TechSupport_Yes', 'StreamingTV_Yes', 'StreamingMovies_Yes', 'Contract_One year', 'Contract_Two year',
-                      'PaperlessBilling_Yes', 'PaymentMethod_Bank transfer (automatic)', 'PaymentMethod_Credit card (automatic)',
-                      'PaymentMethod_Electronic check','MonthlyCharges', 'TotalCharges','tenure', 'Churn_Yes']
+                      'InternetService_DSL', 'InternetService_Fiber optic', 'OnlineSecurity_Yes',
+                      'DeviceProtection_Yes',
+                      'TechSupport_Yes', 'StreamingTV_Yes', 'StreamingMovies_Yes', 'Contract_One year',
+                      'Contract_Two year',
+                      'PaperlessBilling_Yes', 'PaymentMethod_Bank transfer (automatic)',
+                      'PaymentMethod_Credit card (automatic)',
+                      'PaymentMethod_Electronic check', 'MonthlyCharges', 'TotalCharges', 'tenure', 'Churn_Yes']
 
-    cph_train, cph_test = train_test_split(data[train_features], test_size=0.2)
+    cph_train, cph_test = train_test_split(dataset[train_features], test_size=0.2)
     cph = CoxPHFitter()
     cph.fit(cph_train, 'tenure', 'Churn_Yes')
     return cph_train, cph_test, cph
@@ -67,27 +74,14 @@ def modeling(data):
 def visualize(model):
     plt.clf()
     model.print_summary()
-    '''
-    ## Using CoxPH model for survival analysis
-    **Feature significance chart aka coefficient chart:** This tells us the relative significance of each feature on the 
-    customer churn. 
-    Feature with positive coef increases the probability of customer churn and feature with negative coef 
-    reduces the churn probability.
-    '''
     model.plot()
-    st.pyplot(plt)
-    '''
-    \n
-    **Survival curves** for customers whose TotalCharges are 4000, 2500, 2000 and 0. 
-    Clearly customers with high TotalCharges have high survival chances. 
-    '''
     model.plot_covariate_groups('TotalCharges', [0, 2000, 2500, 4000], cmap='coolwarm')
-    st.pyplot(plt)
 
 
-def predict(data, model):
+def predict(dataset, model):
+    plt.clf()
     # censored observation is one which is yet to have an ‘event’, i.e. customers who are yet to churn.
-    censored_subjects = data.loc[data['Churn_Yes'] == 0]
+    censored_subjects = dataset.loc[dataset['Churn_Yes'] == 0]
 
     # predict_survival_function() creates the matrix containing a survival probability for each remaining customers
     # 'unconditioned' survival function 'cuz some of these curves will predict churn before the customer's current tenure time
@@ -99,14 +93,14 @@ def predict(data, model):
     # data.loc[c.name, 'tenure'] => tenure value of specific index(c.name) in original data
     # c.loc[data.loc[c.name, 'tenure']]<=1 always in unconditioned_cf, which may not be true cuz the customers might
     # continue using the platform even after the date of collection of data
-    conditioned_sf = unconditioned_sf.apply(lambda c: (c / c.loc[data.loc[c.name, 'tenure']]).clip(upper=1))
+    conditioned_sf = unconditioned_sf.apply(lambda c: (c / c.loc[dataset.loc[c.name, 'tenure']]).clip(upper=1))
 
-    plt.clf()
     # investigate individual customers and see how the conditioning has affected their survival over the base line
-    subject = '5575-GNVDE'
+    subject = customer
     unconditioned_sf[subject].plot(ls="--", color="#A60628", label="unconditioned")
     conditioned_sf[subject].plot(color="#A60628",
-                                 label="conditioned on $T>34$")  # T>34 indicate that the customer is active even after 58 months
+                                 label=("conditioned on $T>%s$" % dataset.loc[subject]['tenure']))
+                                # T>34 indicate that the customer is active even after 58 months
 
     plt.legend()
     # plot_data = pd.DataFrame()
@@ -114,12 +108,13 @@ def predict(data, model):
     # plot_data['conditioned_sf'] = conditioned_sf[subject]
     # st.line_chart(plot_data)
     '''
-    ## Predicting churn 
-    **Unconditioned survival curve:** This will predict churn before the customer's current tenure time.\n 
-    **Conditioned survival curve:**  This takes into account that customers were still with us when the data was collected, 
+    ## Predicting churn
+    **Unconditioned survival curve:** This will predict churn before the customer's current tenure time.\n
+    **Conditioned survival curve:**  This takes into account that customers were still with us when the data was collected,
     resulting in more relevant prediction.
     '''
     st.pyplot(plt)
+
     return conditioned_sf
 
 
@@ -128,22 +123,27 @@ def predict_50(conditioned_sf):
     # This can also be modified as predictions_50 = qth_survival_times(.50, conditioned_sf),
     # where the percentile can be modified depending on our requirement
     predictions_50 = median_survival_times(conditioned_sf)
+    '''
+    ### predictions_50
+    Predicting the month at which the survival chance of the customer is 50%
+    '''
+    st.write(predictions_50[[customer]])
     return predictions_50
 
 
-def predict_value(predictions_50):
+def predict_value(dataset, predictions_50):
     # Investigate the predicted remeaining value that a customer has for the business
-    values = predictions_50.T.join(data[['MonthlyCharges', 'tenure']])
+    values = predictions_50.T.join(dataset[['MonthlyCharges', 'tenure']])
     values['RemainingValue'] = values['MonthlyCharges'] * (values[0.5] - values[
         'tenure'])  # With this we can predict which customers might inflict the highest damage to the business
     '''
     **Predicted remaining value** that a customer (with 50% survival chance) has for the business 
     '''
-    st.write(values.head(n=5))
+    st.write(values.loc[[customer]])
     return values
 
 
-def churn_prevention(values, model):
+def churn_prevention(dataset, values, model):
     # Through coefficient chart we concluded that these 4 features i.e.
     # Contract_Two year, Contract_One year, PaymentMethod_Credit card(automatic), PaymentMethod_Bank transfer(automatic)
     # promotes the survival chances positively, so let's focus on those
@@ -152,13 +152,18 @@ def churn_prevention(values, model):
                 'Contract_Two year']
     results_dict = {}
 
+    '''
+    ### Original Subscription
+    '''
+    st.write(dataset.loc[[customer],upgrades].T)
+
     # TODO: run this for all the customers
-    actual = data.loc[['5575-GNVDE']]
-    change = data.loc[['5575-GNVDE']]
-    results_dict['5575-GNVDE'] = [model.predict_median(actual)]
+    actual = dataset.loc[[customer]]
+    change = dataset.loc[[customer]]
+    results_dict[customer] = [model.predict_median(actual)]
     for upgrade in upgrades:
         change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
-        results_dict['5575-GNVDE'].append(model.predict_median(change))
+        results_dict[customer].append(model.predict_median(change))
         change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
 
     result_df = pd.DataFrame(results_dict).T
@@ -169,25 +174,31 @@ def churn_prevention(values, model):
     print("Change in survival period\n", actions.head())
     '''
     ## Churn Prevention
-    Reference data to see what features the customer had already subscribed/unsubscribed to.
     '''
-    st.write(data.loc[['5575-GNVDE'], upgrades])
     '''
     \n
-    Through coefficient chart we concluded that these 4 features i.e. *Contract_Two year, Contract_One year, 
-    PaymentMethod_Credit card (automatic), PaymentMethod_Bank transfer (automatic)* promotes the survival chances positively, 
-    so let's focus on those and see how subscribing/ unsubscribing to these services changes the survival chances
+    Through coefficient chart we concluded that these 4 features i.e.
+    ** PaymentMethod_Credit card (automatic), PaymentMethod_Bank transfer (automatic), Contract_One year, 
+    Contract_Two year** promotes the survival chances positively. 
+    So let's focus on those and see how subscribing or unsubscribe to these services changes the survival chances
     '''
-    st.write(actions[['baseline', 'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Bank transfer (automatic)',
-                     'Contract_One year', 'Contract_Two year']].head(n=5))
-    '''
-    \n
-    Notice that if we get the 1st customer to use CC we increase the survival period of cust '5575-GNVDE' by 5 months 
-    i.e. 46(baseline) -> 51(PaymentMethod_Credit card (automatic)) and so on..
-    Note: Cust 5575-GNVDE was already having Contract_One year, after reverting it we can see that the survival chances 
-    goes down from 46 to 37
-    '''
-    st.write(actions.loc[['5575-GNVDE']].head(n=5))
+
+    source = actions.loc[[customer], upgrades].T
+    source['upgrades'] = actions.loc[[customer], upgrades].T.index
+    source['baseline'] = actions.loc[customer]['baseline']
+    source = source.rename(columns={customer: 'Survival period(months)'})
+
+    bar = alt.Chart(source).mark_bar(size=50).encode(
+        x=alt.X('upgrades:O', sort=upgrades),
+        y='Survival period(months):Q'
+    )
+
+    rule = alt.Chart(source).mark_rule(color='red').encode(
+        y='baseline:Q',
+    )
+
+    custom_chart = (bar + rule).properties(height=700, width=700)
+    st.altair_chart(custom_chart)
 
     return actions
 
@@ -205,7 +216,25 @@ def financial_impact(actions):
     **Financial Impact:** This tells us the additional financial value that the customer can add by subscribing 
     to each on of the given four features
     '''
-    st.write(actions.loc[['5575-GNVDE']])
+    upgrades = ['CreditCard Diff', 'BankTransfer Diff', '1yrContract Diff', '2yrContract Diff']
+    source = actions.loc[[customer],upgrades].T
+    source = source.rename(columns={customer: 'Monetary value'})
+    source['Monetary value'] = actions.loc[customer]['RemainingValue'] + source['Monetary value']
+    source['upgrades'] = actions.loc[[customer], upgrades].T.index
+    source['baseline'] = actions.loc[customer]['RemainingValue']
+
+    bar = alt.Chart(source).mark_bar(size=50).encode(
+        x='upgrades:O',
+        y='Monetary value:Q'
+    )
+
+    rule = alt.Chart(source).mark_rule(color='red').encode(
+        y='baseline:Q'
+    )
+
+    custom_chart = (bar + rule).properties(height=700, width=700)
+    st.altair_chart(custom_chart)
+
     return actions
 
 
@@ -230,21 +259,15 @@ def calibration_plot(test_data, model):
     ax1.legend(loc="lower right")
     ax1.set_title('Calibration plots (reliability curve)')
 
-    '''
-    ## Accuracy and Calibration
-    Calibration is the propensity of the model to get probabilities right over time (i.e. having high recall value)
-    
-    **Calibration plot** for tenure = 13 months 
-    '''
-    st.pyplot(plt)
-
     # To understand how far away the line is from the perfect calibration we use brier_score_loss
-    brier_score_loss(test_data['Churn_Yes'], 1 - np.array(model.predict_survival_function(test_data).loc[13]), pos_label=1)
+    brier_score_loss(test_data['Churn_Yes'], 1 - np.array(model.predict_survival_function(test_data).loc[13]),
+                     pos_label=1)
 
     # Inspect the calibration of the model at all the time periods (above one is just for tenure=13)
     loss_dict = {}
     for i in range(1, 73):
-        score = brier_score_loss(test_data['Churn_Yes'], 1 - np.array(model.predict_survival_function(test_data).loc[i]),
+        score = brier_score_loss(test_data['Churn_Yes'],
+                                 1 - np.array(model.predict_survival_function(test_data).loc[i]),
                                  pos_label=1)
         loss_dict[i] = [score]
 
@@ -257,11 +280,6 @@ def calibration_plot(test_data, model):
 
     # Here we can see that the model is well caliberated b/w 5 and 25 months
     plt.show()
-
-    '''
-    **Brier score loss plot** after inspecting the calibration of model for all the tenures/time period
-    '''
-    st.pyplot(plt)
 
     return loss_df
 
@@ -303,13 +321,13 @@ if __name__ == "__main__":
     path = "/Users/pbhagwat/DEV/CohortAnalysis/Cohort-Analysis/Data/Telco-Customer-Churn.csv"
 
     raw_data = read_data(path, file_type)
-    data = data_processing(raw_data)
-    train_data, test_data, model = modeling(data)
+    dataset = data_processing(raw_data)
+    train_data, test_data, model = modeling(dataset)
     visualize(model)
-    conditioned_sf = predict(data, model)
+    conditioned_sf = predict(dataset, model)
     predictions_50 = predict_50(conditioned_sf)
-    values = predict_value(predictions_50)
-    actions = churn_prevention(values, model)
+    values = predict_value(dataset, predictions_50)
+    actions = churn_prevention(dataset, values, model)
     actions = financial_impact(actions)
-    loss_df = calibration_plot(test_data,model)
+    loss_df = calibration_plot(test_data, model)
     actions = return_on_investment(loss_df)
