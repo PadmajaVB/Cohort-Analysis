@@ -1,1 +1,1 @@
-web: streamlit run main.py
+web: streamlit run ./Code/main.py
