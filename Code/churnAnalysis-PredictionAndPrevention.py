@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 import altair as alt
 
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from lifelines import CoxPHFitter
 from lifelines.utils import median_survival_times, qth_survival_times
 import matplotlib.pyplot as plt

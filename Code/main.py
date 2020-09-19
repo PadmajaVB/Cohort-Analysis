@@ -7,6 +7,15 @@ from model import Model
 from predict import Predict
 from inference import Inference
 
+st.write("""
+# Churn Analysis 
+Analysing at-risk customers, factors that influence the churn, and ways to prevent it.
+""")
+
+customer = st.sidebar.selectbox(
+        "Select a customer for predicting churn",
+        ("5575-GNVDE", "1452-KIOVK", "9763-GRSKD")
+    )
 
 # TODO: Handle error scenario
 def read_data(path, file_type):
@@ -57,12 +66,12 @@ if __name__ == "__main__":
 
     visualize(model)
 
-    prediction = Predict(data, model)
+    prediction = Predict(data, model, customer)
     conditioned_sf = prediction.predict()
     predictions_50 = prediction.predict_50(conditioned_sf)
     values = prediction.predict_remaining_value(predictions_50)
 
-    inference = Inference(data, model)
+    inference = Inference(data, model, customer)
     actions = inference.churn_prevention(values)
     actions = inference.financial_impact(actions)
     loss = inference.calibration_plot(test_data)

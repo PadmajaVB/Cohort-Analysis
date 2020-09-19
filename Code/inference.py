@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+import altair as alt
 import matplotlib.pyplot as plt
 
 from sklearn.calibration import calibration_curve
@@ -8,9 +9,10 @@ from sklearn.metrics import brier_score_loss
 
 
 class Inference:
-    def __init__(self, train_data, model):
+    def __init__(self, train_data, model, customer):
         self.data = train_data
         self.model = model
+        self.customer = customer
 
     def churn_prevention(self, values):
         # Through coefficient chart we concluded that these 4 features i.e.
@@ -22,13 +24,18 @@ class Inference:
                     'Contract_Two year']
         results_dict = {}
 
+        st.write('''
+        ### Original Subscription
+        ''')
+        st.write(self.data.loc[[self.customer], upgrades].T)
+
         # TODO: run this for all the customers
-        actual = self.data.loc[['5575-GNVDE']]
-        change = self.data.loc[['5575-GNVDE']]
-        results_dict['5575-GNVDE'] = [self.model.predict_median(actual)]
+        actual = self.data.loc[[self.customer]]
+        change = self.data.loc[[self.customer]]
+        results_dict[self.customer] = [self.model.predict_median(actual)]
         for upgrade in upgrades:
             change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
-            results_dict['5575-GNVDE'].append(self.model.predict_median(change))
+            results_dict[self.customer].append(self.model.predict_median(change))
             change[upgrade] = 1 if list(change[upgrade]) == [0] else 0
 
         result_df = pd.DataFrame(results_dict).T
@@ -41,24 +48,29 @@ class Inference:
         ## Churn Prevention
         Reference data to see what features the customer had already subscribed/unsubscribed to.
         ''')
-        st.write(self.data.loc[['5575-GNVDE'], upgrades])
+        st.write(self.data.loc[[self.customer], upgrades])
         st.write('''
         \n
         Through coefficient chart we concluded that these 4 features i.e. *Contract_Two year, Contract_One year, 
         PaymentMethod_Credit card (automatic), PaymentMethod_Bank transfer (automatic)* promotes the survival chances positively, 
         so let's focus on those and see how subscribing/ unsubscribing to these services changes the survival chances
         ''')
-        st.write(
-            actions[['baseline', 'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Bank transfer (automatic)',
-                     'Contract_One year', 'Contract_Two year']].head(n=5))
-        st.write('''
-        \n
-        Notice that if we get the 1st customer to use CC we increase the survival period of cust '5575-GNVDE' by 5 months 
-        i.e. 46(baseline) -> 51(PaymentMethod_Credit card (automatic)) and so on..
-        Note: Cust 5575-GNVDE was already having Contract_One year, after reverting it we can see that the survival chances 
-        goes down from 46 to 37
-        ''')
-        st.write(actions.loc[['5575-GNVDE']].head(n=5))
+        source = actions.loc[[self.customer], upgrades].T
+        source['upgrades'] = actions.loc[[self.customer], upgrades].T.index
+        source['baseline'] = actions.loc[self.customer]['baseline']
+        source = source.rename(columns={self.customer: 'Survival period(months)'})
+
+        bar = alt.Chart(source).mark_bar(size=50).encode(
+            x=alt.X('upgrades:O', sort=upgrades),
+            y='Survival period(months):Q'
+        )
+
+        rule = alt.Chart(source).mark_rule(color='red').encode(
+            y='baseline:Q',
+        )
+
+        custom_chart = (bar + rule).properties(height=700, width=700)
+        st.altair_chart(custom_chart)
 
         return actions
 
@@ -76,7 +88,25 @@ class Inference:
         **Financial Impact:** This tells us the additional financial value that the customer can add by subscribing 
         to each on of the given four features
         ''')
-        st.write(actions.loc[['5575-GNVDE']])
+        upgrades = ['CreditCard Diff', 'BankTransfer Diff', '1yrContract Diff', '2yrContract Diff']
+        source = actions.loc[[self.customer], upgrades].T
+        source = source.rename(columns={self.customer: 'Monetary value'})
+        source['Monetary value'] = actions.loc[self.customer]['RemainingValue'] + source['Monetary value']
+        source['upgrades'] = actions.loc[[self.customer], upgrades].T.index
+        source['baseline'] = actions.loc[self.customer]['RemainingValue']
+
+        bar = alt.Chart(source).mark_bar(size=50).encode(
+            x=alt.X('upgrades:O', sort=upgrades),
+            y='Monetary value:Q'
+        )
+
+        rule = alt.Chart(source).mark_rule(color='red').encode(
+            y='baseline:Q'
+        )
+
+        custom_chart = (bar + rule).properties(height=700, width=700)
+        st.altair_chart(custom_chart)
+
         return actions
 
     def calibration_plot(self, test_data):

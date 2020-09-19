@@ -4,9 +4,10 @@ from lifelines.utils import median_survival_times, qth_survival_times
 
 
 class Predict:
-    def __init__(self, data, model):
+    def __init__(self, data, model, customer):
         self.data = data
         self.model = model
+        self.customer = customer
 
     def predict(self):
         censored_subjects = self.data.loc[self.data['Churn_Yes'] == 0]
@@ -25,7 +26,7 @@ class Predict:
 
         plt.clf()
         # investigate individual customers and see how the conditioning has affected their survival over the base line
-        subject = '5575-GNVDE'
+        subject = self.customer
         unconditioned_sf[subject].plot(ls="--", color="#A60628", label="unconditioned")
         conditioned_sf[subject].plot(color="#A60628",
                                  label="conditioned on $T>34$")  # T>34 indicate that the customer is active even after 58 months
@@ -49,6 +50,11 @@ class Predict:
         # This can also be modified as predictions_50 = qth_survival_times(.50, conditioned_sf),
         # where the percentile can be modified depending on our requirement
         predictions_50 = median_survival_times(conditioned_sf)
+        st.write('''
+        ### predictions_50
+        Predicting the month at which the survival chance of the customer is 50%
+        ''')
+        st.write(predictions_50[[self.customer]])
         return predictions_50
 
     def predict_remaining_value(self, predictions_50):
@@ -56,8 +62,8 @@ class Predict:
         values = predictions_50.T.join(self.data[['MonthlyCharges', 'tenure']])
         values['RemainingValue'] = values['MonthlyCharges'] * (values[0.5] - values[
             'tenure'])  # With this we can predict which customers might inflict the highest damage to the business
-        st.write("""
+        st.write('''
         **Predicted remaining value** that a customer (with 50% survival chance) has for the business 
-        """)
-        st.write(values.head(n=5))
+        ''')
+        st.write(values.loc[[self.customer]])
         return values
