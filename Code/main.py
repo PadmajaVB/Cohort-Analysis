@@ -47,7 +47,7 @@ if __name__ == "__main__":
     file_type = "csv"
     # print("Enter the file path")
     # path = input()
-    path = "../Data/Telco-Customer-Churn.csv"
+    path = "./Data/Telco-Customer-Churn.csv"
 
     raw_data = read_data(path, file_type)
     data = data_processing(raw_data)
