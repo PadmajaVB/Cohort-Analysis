@@ -33,7 +33,9 @@ def preprocessing_data():
 
 
 def model_and_visualize():
-    global model, train_data, test_data
+    global model
+    global train_data
+    global test_data
     build_model = Model(preprocessed_data)
     train_data, test_data, model = build_model.coxPH()
 

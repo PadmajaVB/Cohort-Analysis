@@ -1,8 +1,7 @@
-pandas==1.0.4
-streamlit==0.60.0
+matplotlib==3.1.1
 altair==4.1.0
-numpy==1.18.4
-matplotlib==3.0.1
-lifelines==0.24.6
-scikit_learn==0.23.2
-gunicorn
+pandas
+numpy
+streamlit==0.61.0
+lifelines
+scikit_learn
