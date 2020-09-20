@@ -1,11 +1,9 @@
 from collections import OrderedDict
 
 import streamlit as st
-import awesome_streamlit as ast
 
 import main
 
-ast.core.services.other.set_logging_format()
 
 PAGES = OrderedDict(
     [

@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+
 def data_processing(raw_data):
     dummies = pd.get_dummies(
         raw_data[['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure', 'PhoneService', 'MultipleLines',
