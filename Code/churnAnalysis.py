@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from lifelines import CoxPHFitter
 from lifelines.utils import median_survival_times, qth_survival_times
 import matplotlib.pyplot as plt
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     data = data_processing(raw_data)
     train_data, test_data, model = modeling(data)
     visualize(model)
-    conditioned_sf = predict(data, model)
+    conditioned_sf = predict(train_data, model)
     predictions_50 = predict_50(conditioned_sf)
     values = predict_value(predictions_50)
     actions = churn_prevention(values, model)

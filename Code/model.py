@@ -1,5 +1,7 @@
 from sklearn.model_selection import train_test_split
 from lifelines import CoxPHFitter
+import matplotlib.pyplot as plt
+import streamlit as st
 
 
 class Model:
@@ -16,8 +18,27 @@ class Model:
                           'PaymentMethod_Credit card (automatic)',
                           'PaymentMethod_Electronic check', 'MonthlyCharges', 'TotalCharges', 'tenure', 'Churn_Yes']
 
-        cph_train, cph_test = train_test_split(self.data[train_features], test_size=0.2)
+        cph_train, cph_test = train_test_split(self.data[train_features], test_size=0.2, random_state=100)
         cph = CoxPHFitter()
         cph.fit(cph_train, 'tenure', 'Churn_Yes')
+        self.visualize(cph)
         return cph_train, cph_test, cph
 
+    def visualize(self, model):
+        plt.clf()
+        model.print_summary()
+        st.write('''
+        **Feature significance chart aka coefficient chart:** This tells us the relative significance of each feature on the 
+        customer churn. 
+        Feature with positive coef increases the probability of customer churn and feature with negative coef 
+        reduces the churn probability.
+        ''')
+        model.plot()
+        st.pyplot(plt)
+        st.write('''
+        \n
+        **Survival curves** for customers whose TotalCharges are 4000, 2500, 2000 and 0. 
+        Clearly customers with high TotalCharges have high survival chances. 
+        ''')
+        model.plot_partial_effects_on_outcome('TotalCharges', [0, 2000, 2500, 4000], cmap='coolwarm').set_xlabel('tenure period')
+        st.pyplot(plt)

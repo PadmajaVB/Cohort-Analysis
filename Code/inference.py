@@ -111,7 +111,7 @@ class Inference:
 
     def calibration_plot(self, test_data):
         plt.clf()
-        plt.figure(figsize=(5, 5))
+        plt.figure(figsize=(10, 10))
 
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
@@ -153,7 +153,7 @@ class Inference:
         loss_df = pd.DataFrame(loss_dict).T
 
         fig, ax = plt.subplots()
-        ax.plot(loss_df.index, loss_df)
+        ax.plot(loss_df.index, loss_df.values)
         ax.set(xlabel='Prediction Time', ylabel='Calibration Loss', title='Cox PH Model Calibration Loss / Time')
         ax.grid()
 

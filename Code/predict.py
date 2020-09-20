@@ -31,6 +31,7 @@ class Predict:
         conditioned_sf[subject].plot(color="#A60628",
                                  label="conditioned on $T>34$")  # T>34 indicate that the customer is active even after 58 months
 
+        plt.xlabel('tenure period')
         plt.legend()
         # plot_data = pd.DataFrame()
         # plot_data['unconditioned_sf'] = unconditioned_sf[subject]

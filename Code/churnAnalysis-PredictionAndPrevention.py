@@ -31,7 +31,7 @@ def read_data(path, file_type):
         raw_data = pd.read_csv(path)
     elif file_type.lower() == 'excel':
         raw_data = pd.read_excel(path)
-    if st.checkbox('Show raw data'):
+    if st.checkbox('Show sample raw data'):
         st.write(raw_data[raw_data['customerID'] == customer])
     return raw_data
 
@@ -75,7 +75,7 @@ def visualize(model):
     plt.clf()
     model.print_summary()
     model.plot()
-    model.plot_covariate_groups('TotalCharges', [0, 2000, 2500, 4000], cmap='coolwarm')
+    model.plot_covariate_groups('TotalCharges', [0, 2000, 2500, 4000], cmap='coolwarm').set_xlabel('tenure period')
 
 
 def predict(dataset, model):
@@ -102,6 +102,7 @@ def predict(dataset, model):
                                  label=("conditioned on $T>%s$" % dataset.loc[subject]['tenure']))
                                 # T>34 indicate that the customer is active even after 58 months
 
+    plt.xlabel('tenure period')
     plt.legend()
     # plot_data = pd.DataFrame()
     # plot_data['unconditioned_sf'] = unconditioned_sf[subject]
