@@ -29,9 +29,10 @@ class Predict:
         subject = self.customer
         unconditioned_sf[subject].plot(ls="--", color="#A60628", label="unconditioned")
         conditioned_sf[subject].plot(color="#A60628",
-                                 label="conditioned on $T>34$")  # T>34 indicate that the customer is active even after 58 months
+                                 label=("conditioned on $T>%s$" % self.data.loc[self.customer]['tenure']))  # T>34 indicate that the customer is active even after 58 months
 
         plt.xlabel('tenure period')
+        plt.ylabel('Survival chances')
         plt.legend()
         # plot_data = pd.DataFrame()
         # plot_data['unconditioned_sf'] = unconditioned_sf[subject]
@@ -46,25 +47,22 @@ class Predict:
         st.pyplot(plt)
         return conditioned_sf
 
-    def predict_50(self, conditioned_sf):
+    def predict_percentile(self, conditioned_sf, percentile):
         # Predict the month number where the survival chance of customer is 50%
         # This can also be modified as predictions_50 = qth_survival_times(.50, conditioned_sf),
         # where the percentile can be modified depending on our requirement
-        predictions_50 = median_survival_times(conditioned_sf)
-        st.write('''
-        ### predictions_50
-        Predicting the month at which the survival chance of the customer is 50%
-        ''')
-        st.write(predictions_50[[self.customer]])
-        return predictions_50
+        predictions = qth_survival_times(percentile, conditioned_sf)
+        st.write('### predictions\n Predicting the month at which the survival chance of the customer is ', percentile*100,' percentile')
+        st.write(predictions[[self.customer]])
+        return predictions
 
-    def predict_remaining_value(self, predictions_50):
+    def predict_remaining_value(self, predictions, percentile):
         # Investigate the predicted remeaining value that a customer has for the business
-        values = predictions_50.T.join(self.data[['MonthlyCharges', 'tenure']])
-        values['RemainingValue'] = values['MonthlyCharges'] * (values[0.5] - values[
+        values = predictions.T.join(self.data[['MonthlyCharges', 'tenure']])
+        values['RemainingValue'] = values['MonthlyCharges'] * (values[percentile] - values[
             'tenure'])  # With this we can predict which customers might inflict the highest damage to the business
         st.write('''
-        **Predicted remaining value** that a customer (with 50% survival chance) has for the business 
+        **Predicted remaining value** that a customer has for the business 
         ''')
         st.write(values.loc[[self.customer]])
         return values

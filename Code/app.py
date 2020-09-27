@@ -25,6 +25,14 @@ PAGES = OrderedDict(
                 main.inference,
                 """Here we will see how altering any predictor impacts the survival chances of the customer""",
             ),
+        ),
+        (
+            "Accuracy and Calibration",
+            (
+                main.score,
+                """Here we will be calculating the accuracy and calibration of our model.
+                 \n Calibration is the propensity of the model to get probabilities right over time (i.e. having high recall value)""",
+            ),
         )
     ]
 )
