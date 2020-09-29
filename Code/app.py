@@ -39,13 +39,11 @@ PAGES = OrderedDict(
 
 
 def main():
-    demo_name = st.sidebar.selectbox("Navigation menu", list(PAGES.keys()), 0)
+    demo_name = st.sidebar.selectbox("Quick links", list(PAGES.keys()), 0)
     demo = PAGES[demo_name][0]
 
     if demo_name == "Data":
         st.write("# Churn Analysis")
-        st.write("""This help in analysing at-risk customers, factors that influence the churn, 
-                and ways to prevent it.\n Here we will be pre-processing the data""")
     elif demo_name == "Model":
         st.write('# Using CoxPH model for survival analysis')
         st.write("""Here we will be using one of the survial model called as CoXPH for predicting churn""")

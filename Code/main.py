@@ -10,20 +10,28 @@ import calibration
 
 
 def file_selector(folder_path='./Data/'):
+    global selected_filename
     filenames = os.listdir(folder_path)
     filenames = [file for file in filenames if not file.startswith(".")]
-    selected_filename = st.selectbox('Select a file', filenames)
+    filenames.insert(0, "Select a file")
+    selected_filename = st.selectbox('', filenames)
+    if selected_filename == "Select a file":
+        selected_filename = 'file_not_selected'
+        return selected_filename
     return os.path.join(folder_path, selected_filename)
 
 
 # TODO: Handle error scenario
 def read_data(path, file_type):
     global raw_data
+    if selected_filename == 'file_not_selected':
+        st.write("Please select a customer data file to proceed")
+        return
     if file_type.lower() == 'csv':
         raw_data = pd.read_csv(path)
     elif file_type.lower() == 'excel':
         raw_data = pd.read_excel(path)
-    st.write('Sample raw data')
+    st.write('### First few records')
     st.write(raw_data.head(n=5))
     return raw_data
 
@@ -40,7 +48,10 @@ def preprocessing_data():
     st.write('### Select customer data from Data directory')
     folder_path = './Data/'
     filename = file_selector(folder_path=folder_path)
-    st.write('You selected `%s`' % filename)
+
+    if selected_filename == 'file_not_selected':
+        st.write("Please select a customer data file to proceed")
+        return
 
     raw_data = read_data(filename, file_type)
     preprocessed_data = data_processing(raw_data)
@@ -50,6 +61,9 @@ def model_and_visualize():
     global model
     global train_data
     global test_data
+    if selected_filename == 'file_not_selected':
+        st.write("Please select a customer data file to proceed")
+        return
     build_model = Model(preprocessed_data)
     train_data, test_data, model = build_model.coxPH()
 
@@ -58,6 +72,10 @@ def predict():
     global values
     global customer
     global percentile
+
+    if selected_filename == 'file_not_selected':
+        st.write("Please select a customer data file to proceed")
+        return
 
     customer = st.sidebar.selectbox(
         "Select a customer for predicting churn",
@@ -76,11 +94,17 @@ def predict():
 
 def inference():
     global actions
+    if selected_filename == 'file_not_selected':
+        st.write("### Customer Data")
+        return
     inference = Inference(train_data, model, customer)
     actions = inference.churn_prevention(values,percentile)
     actions = inference.financial_impact(actions)
 
 
 def score():
+    if selected_filename == 'file_not_selected':
+        st.write("Please select a customer data file to proceed")
+        return
     loss = calibration.calibration_plot(model, test_data)
     roi = calibration.return_on_investment(loss,actions)

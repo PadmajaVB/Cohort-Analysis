@@ -19,7 +19,7 @@ def data_processing(raw_data):
     data.set_index('customerID', inplace=True)
     data['TotalCharges'] = data[['TotalCharges']].replace([' '], '0')
     data['TotalCharges'] = pd.to_numeric(data['TotalCharges'])
-    st.write('Pre-processed data')
+    st.write('### Pre-processed data')
     st.write(data.head(n=5))
     return data
 
