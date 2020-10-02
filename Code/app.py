@@ -11,23 +11,17 @@ PAGES = OrderedDict(
 
         ("Model", (main.model_and_visualize, None)),
         (
-            "Prediction",
-            (
-                main.predict,
-                """
-                Here we will be predicting the survival probability and remaining value (monetary value)
-                 of the selected customer.""",
-            ),
+            "Prediction", (main.predict, None)
         ),
         (
-            "Inference",
+            "What If Analysis",
             (
                 main.inference,
                 """Here we will see how altering any predictor impacts the survival chances of the customer""",
             ),
         ),
         (
-            "Accuracy and Calibration",
+            "Model Diagnostics",
             (
                 main.score,
                 """Here we will be calculating the accuracy and calibration of our model.
@@ -45,8 +39,12 @@ def main():
     if demo_name == "Data":
         st.write("# Churn Analysis")
     elif demo_name == "Model":
-        st.write('# Using CoxPH model for survival analysis')
-        st.write("""Here we will be using one of the survial model called as CoXPH for predicting churn""")
+        st.write('# Machine learning models are built to predict churn')
+        st.write('(Details at the end of the page)')
+    elif demo_name == "Prediction":
+        st.write('# Propensity to Churn')
+        st.write('Here we will be predicting the survival probability and remaining value (monetary value) '
+                 'of the selected customer.')
     else:
         st.markdown("# %s" % demo_name)
         description = PAGES[demo_name][1]

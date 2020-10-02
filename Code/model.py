@@ -42,3 +42,10 @@ class Model:
         ''')
         model.plot_partial_effects_on_outcome('TotalCharges', [0, 2000, 2500, 4000], cmap='coolwarm').set_xlabel('tenure period')
         st.pyplot(plt)
+
+        st.write('### Approach')
+        st.write("""Survival analysis models are used to predict churn. 
+        It helps you predict the survival chances of the customer at any given point of time.
+        Here we have used one type of survival analysis model called as CoXPH for predicting churn""")
+        link = '[Read more](https://en.wikipedia.org/wiki/Survival_analysis)'
+        st.markdown(link, unsafe_allow_html=True)

@@ -2,11 +2,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import altair as alt
-import matplotlib.pyplot as plt
-
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import brier_score_loss
-
 
 class Inference:
     def __init__(self, train_data, model, customer):
