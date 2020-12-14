@@ -3,13 +3,14 @@ import numpy as np
 import streamlit as st
 import altair as alt
 
+
 class Inference:
     def __init__(self, train_data, model, customer):
         self.data = train_data
         self.model = model
         self.customer = customer
 
-    def churn_prevention(self, values,percentile):
+    def churn_prevention(self, values, percentile):
         # Through coefficient chart we concluded that these 4 features i.e.
         # Contract_Two year, Contract_One year, PaymentMethod_Credit card(automatic), PaymentMethod_Bank transfer(automatic)
         # promotes the survival chances positively, so let's focus on those
@@ -21,6 +22,7 @@ class Inference:
 
         st.write('''
         ### Original Subscription
+        Reference data to see what features the customer had already subscribed/unsubscribed to.
         ''')
         st.write(self.data.loc[[self.customer], upgrades].T)
 
@@ -41,9 +43,9 @@ class Inference:
         print("Change in survival period\n", actions.head())
         st.write('''
         ## Churn Prevention
-        Reference data to see what features the customer had already subscribed/unsubscribed to.
+        Reverting the subscription
         ''')
-        st.write(self.data.loc[[self.customer], upgrades])
+        st.write(self.data.loc[[self.customer], upgrades].replace([1, 0], [0, 1]))
         st.write('''
         \n
         Through coefficient chart we concluded that these 4 features i.e. *Contract_Two year, Contract_One year, 
@@ -103,4 +105,3 @@ class Inference:
         st.altair_chart(custom_chart)
 
         return actions
-
